@@ -52,7 +52,11 @@ void cLayer::forward_prop( const std::vector<double>& x, std::vector<double>& ou
 }
 
 void cLayer::backward_prop( const std::vector<double>& x, std::vector<double>& output){
-	for(int i = 0; i < output.size(); i++);
+	for(int i = 0; i < output.size(); i++){
+		output[i] = derivate_active_func(w2[i], x);
+
+
+	}
 
 }
 
