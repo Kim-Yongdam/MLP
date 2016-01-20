@@ -17,6 +17,7 @@ double derivate_sigmoid( const std::vector<double>& w, const std::vector<double>
 
 double derivate_relu( const std::vector<double>& w, const std::vector<double>& x) {
 	// TO DO
+	// ver 111
 	return max(0., vector_multiplication(w,x));
 }
 
