@@ -68,6 +68,12 @@ class cLayer {
 			}
 		}
 
+		double activation_value[256];
+		double derivation_value[256];
+		double activated_output[10];
+		double derivated_output[10];
+		
+
 		virtual void forward_prop( const std::vector<double>& x, std::vector<double>& output) = 0;
 		virtual void backward_prop( const std::vector<double>& x, const std::vector<double>& sigma_p, std::vector<double>& output) = 0;
 
@@ -85,6 +91,8 @@ class cHiddenLayer : public cLayer{
 				double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
 				double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&))
 				: cLayer( _input, _output, _active_func, _derivate_active_func) {
+					assert( _active_func != softmax);
+					assert( _derivate_active_func != derivate_softmax);
 		}
 
 		void forward_prop( const std::vector<double>& x, std::vector<double>& output);

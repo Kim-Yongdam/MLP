@@ -10,41 +10,42 @@ using namespace cv;
 
 
 double derivate_sigmoid( const std::vector<double>& w, const std::vector<double>& x) {
-	// TO DO
+
 	return (1 - exp( -vector_multiplication(w,x)) / sqrt(1 + exp( -vector_multiplication(w,x))));
 }
 
 
 double derivate_relu( const std::vector<double>& w, const std::vector<double>& x) {
-	// TO DO
-	// ver 111
-	return max(0., vector_multiplication(w,x));
+
+	double z = vector_multiplication(w, x);
+
+	if(z > 0 ) return 1;
+	else return 0;
 }
 
 
 // http://math.stackexchange.com/questions/945871/derivative-of-softmax-loss-function
 double derivate_softmax( const std::vector<double>& w, const std::vector<double>& x) {
-	// TO DO
-	return exp(vector_multiplication(w,x));
+	//TO DO
+	return 0;
 }
 
 
 double sigmoid( const std::vector<double>& w, const std::vector<double>& x) {
-	// TO DO
 
 	return 1 / (1 + exp( -vector_multiplication(w, x)));
 }
 
 
 double relu( const std::vector<double>& w, const std::vector<double>& x) {
-	// TO DO
+	
 	return max(0., vector_multiplication(w,x));
 }
 
 
 double softmax( const std::vector<double>& w, const std::vector<double>& x) {
-	// TO DO
-	return exp(vector_multiplication(w, x));
+	//TO DO
+	return 0;
 }
 
 
@@ -52,14 +53,16 @@ void cOutputLayer::forward_prop( const std::vector<double>& x, std::vector<doubl
 
 	output.resize( w2.size());
 	for(int i =0; i < w2.size(); i++)
-		output[i] = active_func(w2[i], x);
+		output[i] = exp( vector_multiplication( w2[i], x));
 
 	double sum = 0;
 	for( int i = 0 ; i < w2.size() ; i++)
 		sum += output[ i];
 
-	for( int i = 0 ; i < w2.size() ; i++)
+	for( int i = 0 ; i < w2.size() ; i++){
 		output[ i] /= sum;
+		activated_output[i] = output[i];	
+	}
 }
 
 void cOutputLayer::backward_prop( const std::vector<double>& x, const std::vector<double>& sigma_p, std::vector<double>& output){
@@ -67,6 +70,7 @@ void cOutputLayer::backward_prop( const std::vector<double>& x, const std::vecto
 	output.resize( w2.size());
 	for(int i = 0; i < output.size(); i++){
 		output[i] = derivate_active_func(w2[i], x);
+		derivated_output[i]  = (sigma_p[i] - output[i]) * output[i] * (1 - output[i]);
 	}
 }
 
@@ -74,8 +78,10 @@ void cOutputLayer::backward_prop( const std::vector<double>& x, const std::vecto
 void cHiddenLayer::forward_prop( const std::vector<double>& x, std::vector<double>& output) {
 
 	output.resize( w2.size());
-	for(int i =0; i < w2.size(); i++)
+	for(int i =0; i < w2.size(); i++){
 		output[i] = active_func(w2[i], x);
+		activation_value[i] = output[i];
+	}
 }
 
 void cHiddenLayer::backward_prop( const std::vector<double>& x, const std::vector<double>& t_p, std::vector<double>& output){
@@ -83,14 +89,15 @@ void cHiddenLayer::backward_prop( const std::vector<double>& x, const std::vecto
 	output.resize( w2.size());
 	for(int i = 0; i < output.size(); i++){
 		output[i] = derivate_active_func(w2[i], x);
-	}
+		derivation_value[i] += derivated_output[i] * output[i] * (1 - output[i]);
 
+	}
 	
 	/*
 	// 5단계  --------------------------------------------
 	vector<double> sigma_p( w2.size(), 0);
 	for( int nsigma = 0 ; nsigma < sigma_p.size() ; nsigma++)
-		sigma_p[ nsigma] = ( output1[ nsigma] - t_p[ nsigma]) * derivate_active_func( t_p);
+	sigma_p[ nsigma] = ( output1[ nsigma] - t_p[ nsigma]) * derivate_active_func( t_p);
 	// 5단계 끝===========================================
 
 	// 6단계
@@ -117,12 +124,12 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 				output1 = output2;
 			}
 
-			
+
 			//one hot encoding
 			vector<double> t_p1( output1.size(), 0);
 			t_p1[ datum.label] = 1;			
 			for( int nlayer = layers.size() - 1 ; nlayer >= 0 ; nlayer--) {
-				
+
 				vector<double> t_p2;
 				auto& layer = layers[ nlayer];
 				layer->backward_prop( datum.x, t_p1, t_p2);
