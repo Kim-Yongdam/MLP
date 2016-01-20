@@ -34,6 +34,8 @@ std::vector<std::string> listDir( const std::string infolder, const std::string 
 //Calculate the value by multiplying 2 vectors
 double vector_multiplication(const std::vector<double> &a, const std::vector<double> &b) {
 
+	// a = w, b = x
+
 	//cout << "Now multiplying.." << endl;
 
 	//	for(int i=0; i<a.size(); i++)
@@ -41,11 +43,11 @@ double vector_multiplication(const std::vector<double> &a, const std::vector<dou
 
 	double value=0;
 
-	for(int i = 0; i < a.size(); i++){
+	for(int i = 0; i < b.size(); i++){
 		value += a[i] * b[i];
 		
 	}
-	value += b[a.size()] * 1;
+	value += a[ b.size()] * 1;
 	//	cout << value;
 
 	return value;

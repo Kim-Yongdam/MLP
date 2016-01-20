@@ -17,7 +17,8 @@ double softmax( const std::vector<double>& w, const std::vector<double>& x);
 
 
 class cLayer {
-	private:
+	
+	protected:
 		const int input;
 		const int output;
 		std::vector< std::vector<double>> w2;
@@ -25,6 +26,7 @@ class cLayer {
 		double (*derivate_active_func)( const std::vector<double>&, const std::vector<double>&);
 
 	public:
+
 		cLayer( int _input, int _output,
 				double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
 				double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&)) : input( _input), output( _output) {
@@ -66,8 +68,8 @@ class cLayer {
 			}
 		}
 
-		void forward_prop( const std::vector<double>& x, std::vector<double>& output);
-		void backward_prop( const std::vector<double>& x, std::vector<double>& output);
+		virtual void forward_prop( const std::vector<double>& x, std::vector<double>& output) = 0;
+		virtual void backward_prop( const std::vector<double>& x, const std::vector<double>& sigma_p, std::vector<double>& output) = 0;
 
 
 		void dataNormalization( ) {
@@ -75,9 +77,43 @@ class cLayer {
 };
 
 
+
+class cHiddenLayer : public cLayer{
+
+	public:
+		cHiddenLayer( int _input, int _output,
+				double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
+				double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&))
+				: cLayer( _input, _output, _active_func, _derivate_active_func) {
+		}
+
+		void forward_prop( const std::vector<double>& x, std::vector<double>& output);
+		void backward_prop( const std::vector<double>& x, const std::vector<double>& t_p, std::vector<double>& output);
+};
+
+
+// softmax만 지원!!
+class cOutputLayer : public cLayer{
+	
+	public:
+		cOutputLayer( int _input, int _output,
+				double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
+				double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&))
+				: cLayer( _input, _output, _active_func, _derivate_active_func) {
+
+					assert( _active_func == softmax);
+					assert( _derivate_active_func == derivate_softmax);
+		}
+
+		void forward_prop( const std::vector<double>& x, std::vector<double>& output);
+		void backward_prop( const std::vector<double>& x, const std::vector<double>& t_p, std::vector<double>& output);
+};
+
+
+
 class cMLP {
 	private:
-		std::vector< cLayer> layers;
+		std::vector< cLayer*> layers;
 
 	public:
 
@@ -85,20 +121,28 @@ class cMLP {
 
 			// 히든 레이어 추가
 			for( int nlayer = 0 ; nlayer < neuron_nums.size() - 2 ; nlayer++) {
-				cLayer layer = cLayer( neuron_nums[ nlayer], neuron_nums[ nlayer + 1], sigmoid, derivate_sigmoid);
-				layer.initWeightUsingNguyenWidrow();
+				cHiddenLayer* layer = new cHiddenLayer( neuron_nums[ nlayer], neuron_nums[ nlayer + 1], sigmoid, derivate_sigmoid);
+
+				// 1단계
+				layer->initWeightUsingNguyenWidrow();
 				layers.push_back( layer);
 			}
 
 			// 아웃풋 레이어 추가
-			cLayer layer = cLayer( neuron_nums[ neuron_nums.size() - 2], neuron_nums[ neuron_nums.size() - 1], softmax, derivate_softmax);
-			layer.initWeightUsingNguyenWidrow();
+			cOutputLayer* layer = new cOutputLayer( neuron_nums[ neuron_nums.size() - 2], neuron_nums[ neuron_nums.size() - 1], softmax, derivate_softmax);
+			layer->initWeightUsingNguyenWidrow();
+			layer->initWeightUsingNguyenWidrow();
 			layers.push_back( layer);
 		}
 
 
 		void train( const std::vector< datum>& data, const int iter, const double learning_rate);
 		std::vector<int> predict( const std::vector< datum>& data);
+
+		~cMLP( ) {
+			for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++)
+				delete layers[ nlayer];
+		}
 };
 
 
