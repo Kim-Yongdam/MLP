@@ -94,6 +94,18 @@ void cHiddenLayer::backward_prop( const std::vector<double>& x, const std::vecto
 	}
 	
 	/*
+	2016.01.20
+
+	수정사항 : 
+	1. weight 값을 w2로 부터 받아와야 한다. 함수원형을 수정하려 했으나, 선언문을 모두 고쳐야 해서 fail. w2 자체를 쓰는 방법을 찾아봐야 겠다.
+	2. 6단계를 마친 뒤에, 7단계에서 weight와 theta를 어떻게 업데이트 할 것인가.
+
+	*/
+
+
+
+
+	/*
 	// 5단계  --------------------------------------------
 	vector<double> sigma_p( w2.size(), 0);
 	for( int nsigma = 0 ; nsigma < sigma_p.size() ; nsigma++)
