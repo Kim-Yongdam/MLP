@@ -11,8 +11,8 @@ int main( void) {
 	cMLP mlp( neurons);
 
 	vector< datum> train_data, test_data;
-	getMNIST( "../../MNIST DB", train_data, 100, test_data, 0);
-	
+	getMNIST( "../../MNIST DB", train_data, 1000, test_data, 10);
+
 	std::for_each( train_data.begin(), train_data.end(), [] ( datum& val1) { 
 		std::for_each( val1.x.begin(), val1.x.end(), [] ( double& val2) {
 			val2 /= 255.; 
@@ -20,6 +20,15 @@ int main( void) {
 	});
 
 	mlp.train( train_data, 100, 0.01);
+
+
+
+	double result;
+
+	std::vector<int> pred_label = mlp.predict(test_data);
+	result = calcMNIST_test_error(test_data, pred_label);
+
+	printf("Matching Rate : %.2f\n", result);
 
 	return 0;
 }

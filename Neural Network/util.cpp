@@ -55,7 +55,7 @@ double vector_multiplication(const std::vector<double> &a, const std::vector<dou
 
 //Calculate the index of array which contains the maximum value.
 
-int getMaxInt(std::vector<double> &array) {
+int getMaxInt(const std::vector<double> &array) {
 
 	double max = array[0];
 	int index = 0;
