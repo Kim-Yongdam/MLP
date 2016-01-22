@@ -93,8 +93,9 @@ void cOutputLayer::backward_prop( const std::vector<double>& x, const std::vecto
 	output.resize( w2.size());
 	for(int j = 0; j < output.size(); j++){
 		//	output[j] = derivate_active_func(w2[j], x);	//softmax는 함수 파라미터 형식이 맞지 않아, outputlayer에서 직접 구현한다.
-		derivated_output[j] = (delta_p[j] - activated_output[j]) * activated_output[j] * (1 - activated_output[j]);	//delta pk
 		output[j] = activated_output[j] - delta_p[j]; //derivative softmax
+		derivated_output[j] = (delta_p[j] - activated_output[j]) * output[j];	//delta pk
+
 	}
 	for(int k = 0; k <= 256; k++){
 		for(int l = 0; l < output.size(); l++){
