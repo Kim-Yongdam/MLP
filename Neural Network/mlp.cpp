@@ -13,7 +13,7 @@ std::vector<double> derivated_output;		//delta pk
 //http://www.aistudy.com/neural/MLP_kim.htm#_bookmark_165f298
 //Multi-Layer Perceptron 참조 페이지
 
-#define LEARNING_RATE 0.01
+#define LEARNING_RATE 0.1
 #define CLASS_SIZE 10
 #define ITER_COUNT 1000
 
@@ -24,9 +24,9 @@ void init(){
 	memset(activated_output, 0, sizeof(double) * 10);
 	memset(derivated_output, 0, sizeof(double) * 10);
 	*/
-	activation_value.resize(256);
+	activation_value.resize(257);
 	activated_output.resize(10);
-	derivation_value.resize(256);
+	derivation_value.resize(257);
 	derivated_output.resize(10);
 }
 
@@ -92,11 +92,17 @@ void cOutputLayer::backward_prop( const std::vector<double>& x, const std::vecto
 
 	output.resize( w2.size());
 	for(int j = 0; j < output.size(); j++){
-	//	output[j] = derivate_active_func(w2[j], x);
-		derivated_output[j] = activated_output[j] - delta_p[j];	//굿
-		for(int k = 0; k < CLASS_SIZE; k++)
-			w2[j][k] = w2[j][k] + LEARNING_RATE * derivated_output[j] * activation_value[j]; //굿
+		//	output[j] = derivate_active_func(w2[j], x);	//softmax는 함수 파라미터 형식이 맞지 않아, outputlayer에서 직접 구현한다.
+		derivated_output[j] = (delta_p[j] - activated_output[j]) * activated_output[j] * (1 - activated_output[j]);	//delta pk
+		output[j] = activated_output[j] - delta_p[j]; //derivative softmax
 	}
+	for(int k = 0; k <= 256; k++){
+		for(int l = 0; l < output.size(); l++){
+			derivation_value[k] += derivated_output[l] * w2[l][k] * activation_value[k] * (1 - activation_value[k]);	//굿
+			w2[l][k] = w2[l][k] + LEARNING_RATE * derivated_output[l] * activation_value[k]; //굿
+		}
+	}
+
 }
 
 
@@ -111,24 +117,30 @@ void cHiddenLayer::forward_prop( const std::vector<double>& x, std::vector<doubl
 
 void cHiddenLayer::backward_prop( const std::vector<double>& x, const std::vector<double>& t_p, std::vector<double>& output){
 
-	//t_p : 목표 출력값
+	//t_p : 목표 출력값인데 Opi가 들어와있든지 아님 노쓸모
+
+	//여기에서 wji 업데이트를 해야함. Opi
 
 
 	output.resize( w2.size());
 	for(int i = 0; i < output.size(); i++){
-		output[i] = derivate_active_func(w2[i], x);
-		for(int j = 0; j < t_p.size(); j++) {
-			derivation_value[i] = output[i] * derivated_output[i] * w2[i][j];	//굿
-			w2[i][j] = w2[i][j] + LEARNING_RATE * derivation_value[i] * output[i];
+		output[i];// = vector_multiplication(w2[i], x);
+
+		//derivate_active_func(w2[i], x);
+
+		for(int j = 0; j <= x.size(); j++) {
+
+			w2[i][j] = w2[i][j] + LEARNING_RATE * derivation_value[i];
 		}
+		//w2[i][784] = w2[i][784] + LEARNING_RATE * 1;
 	}
 
 	/*
-	2016.01.20
+	2016.01.22
 
-	수정사항 : 
-	1. weight 값을 w2로 부터 받아와야 한다. 함수원형을 수정하려 했으나, 선언문을 모두 고쳐야 해서 fail. w2 자체를 쓰는 방법을 찾아봐야 겠다.
-	2. 6단계를 마친 뒤에, 7단계에서 weight와 theta를 어떻게 업데이트 할 것인가. //NN graph 개형 생각해서 값 대입.
+	To Do : 
+
+	back propagation 수정. output layer에서 softmax 값을 구하는 것이 잘못되어서 parameter update가 안되고 있다.
 
 	*/
 
@@ -171,7 +183,7 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 
 			//one hot encoding
 			vector<double> t_p1( output1.size(), 0);
-			t_p1[ datum.label] = 1;			
+			t_p1[ datum.label] = 1;			// 실제출력 값
 			for( int nlayer = layers.size() - 1 ; nlayer >= 0 ; nlayer--) {
 
 				vector<double> t_p2;
@@ -201,11 +213,11 @@ std::vector<int> cMLP::predict( const std::vector< datum>& data) {
 			vector<double> output2;
 			layer->forward_prop( output1, output2);
 			output1 = output2;
-			
+
 		}
 		pred_label[iter] = getMaxInt(output1);
 	}
-	
+
 	return pred_label;
 }
 /*

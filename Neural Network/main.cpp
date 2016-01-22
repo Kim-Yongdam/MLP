@@ -21,8 +21,6 @@ int main( void) {
 
 	mlp.train( train_data, 100, 0.01);
 
-
-
 	double result;
 
 	std::vector<int> pred_label = mlp.predict(test_data);
