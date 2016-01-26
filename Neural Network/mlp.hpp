@@ -137,7 +137,7 @@ public:
 		}
 
 		// ¾Æ¿ôÇ² ·¹ÀÌ¾î Ãß°¡
-		cOutputLayer* layer = new cOutputLayer( neuron_nums[ neuron_nums.size() - 2], neuron_nums[ neuron_nums.size() - 1], softmax, derivate_softmax);
+		cHiddenLayer* layer = new cHiddenLayer( neuron_nums[ neuron_nums.size() - 2], neuron_nums[ neuron_nums.size() - 1], sigmoid, derivate_sigmoid);
 		layer->initWeightUsingNguyenWidrow();
 		layer->initWeightUsingNguyenWidrow();
 		layers.push_back( layer);
