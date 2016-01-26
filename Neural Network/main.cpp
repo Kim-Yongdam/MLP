@@ -4,6 +4,7 @@ using namespace std;
 
 int main( void) {
 
+
 	vector<int> neurons;
 	neurons.push_back( 28 * 28);
 	neurons.push_back( 256);
@@ -11,14 +12,15 @@ int main( void) {
 	cMLP mlp( neurons);
 
 	vector< datum> train_data, test_data;
-	getMNIST( "../../MNIST DB", train_data, 1000, test_data, 100);
+	getMNIST( "../../DB/MNIST", train_data, 1000, test_data, 10);
 
 	std::for_each( train_data.begin(), train_data.end(), [] ( datum& val1) { 
 		std::for_each( val1.x.begin(), val1.x.end(), [] ( double& val2) {
 			val2 /= 255.; 
 		});
-	}); //down scaling
+	});
 
+	std::random_shuffle( train_data.begin(), train_data.end());
 	mlp.train( train_data, 100, 0.01);
 
 	double result;

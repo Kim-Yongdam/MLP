@@ -14,12 +14,6 @@ double derivate_softmax( const std::vector<double>& w, const std::vector<double>
 double sigmoid( const std::vector<double>& w, const std::vector<double>& x);
 double relu( const std::vector<double>& w, const std::vector<double>& x);
 double softmax( const std::vector<double>& w, const std::vector<double>& x);
-void init();
-
-extern std::vector<double> activation_value;		//Opk
-extern std::vector<double> derivation_value;		//delta pj
-extern std::vector<double> activated_output;		//Opj
-extern std::vector<double> derivated_output;		//delta pk
 
 
 class cLayer {
@@ -28,8 +22,6 @@ protected:
 	const int input;
 	const int output;
 	std::vector< std::vector<double>> w2;
-	double (*active_func)( const std::vector<double>&, const std::vector<double>&);
-	double (*derivate_active_func)( const std::vector<double>&, const std::vector<double>&);
 
 public:
 
@@ -37,8 +29,6 @@ public:
 		double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
 		double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&)) : input( _input), output( _output) {
 
-			active_func = _active_func;
-			derivate_active_func = _derivate_active_func;
 			w2.resize( output);
 			for( int noutput = 0 ; noutput < output ; noutput++)
 				w2[ noutput].resize( input + 1);	// +1은 bias
@@ -75,10 +65,11 @@ public:
 	}
 
 	virtual void forward_prop( const std::vector<double>& x, std::vector<double>& output) = 0;
-	virtual void backward_prop( const std::vector<double>& x, const std::vector<double>& sigma_p, std::vector<double>& output) = 0;
+	std::vector< std::vector<double>>& getW2( ) {
+		return w2;
+	}
 
 	void dataNormalization( ) {
-
 	}
 };
 
@@ -87,24 +78,25 @@ public:
 class cHiddenLayer : public cLayer{
 
 public:
+	double (*active_func)( const std::vector<double>&, const std::vector<double>&);
+	double (*derivate_active_func)( const std::vector<double>&, const std::vector<double>&);
+
 	cHiddenLayer( int _input, int _output,
 		double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
 		double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&))
 		: cLayer( _input, _output, _active_func, _derivate_active_func) {
-			assert( _active_func != softmax);
-			assert( _derivate_active_func != derivate_softmax);
-	}
+			active_func = _active_func;
+			derivate_active_func = _derivate_active_func;
+		}
 
 	void forward_prop( const std::vector<double>& x, std::vector<double>& output);
-	void backward_prop( const std::vector<double>& x, const std::vector<double>& t_p, std::vector<double>& output);
 };
 
 
-// softmax만 지원!!
-class cOutputLayer : public cLayer{
+class cSoftMaxLayer : public cLayer{
 
 public:
-	cOutputLayer( int _input, int _output,
+	cSoftMaxLayer( int _input, int _output,
 		double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
 		double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&))
 		: cLayer( _input, _output, _active_func, _derivate_active_func) {
@@ -114,14 +106,13 @@ public:
 	}
 
 	void forward_prop( const std::vector<double>& x, std::vector<double>& output);
-	void backward_prop( const std::vector<double>& x, const std::vector<double>& t_p, std::vector<double>& output);
 };
 
 
 
 class cMLP {
 private:
-	std::vector< cLayer*> layers;
+	std::vector< cHiddenLayer*> layers;
 
 public:
 
@@ -136,7 +127,6 @@ public:
 			layers.push_back( layer);
 		}
 
-		// 아웃풋 레이어 추가
 		cHiddenLayer* layer = new cHiddenLayer( neuron_nums[ neuron_nums.size() - 2], neuron_nums[ neuron_nums.size() - 1], sigmoid, derivate_sigmoid);
 		layer->initWeightUsingNguyenWidrow();
 		layer->initWeightUsingNguyenWidrow();

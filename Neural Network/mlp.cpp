@@ -4,15 +4,6 @@ using namespace std;
 using namespace cv;
 
 
-std::vector<double> activation_value;		//Opk
-std::vector<double> derivation_value;		//delta pj
-std::vector<double> activated_output;		//Opj
-std::vector<double> derivated_output;		//delta pk
-
-std::vector<double> net_val1;
-std::vector<double> net_val2;
-
-
 //http://www.aistudy.com/neural/MLP_kim.htm#_bookmark_165f298
 //Multi-Layer Perceptron 참조 페이지
 
@@ -20,22 +11,12 @@ std::vector<double> net_val2;
 #define CLASS_SIZE 10
 #define ITER_COUNT 1000
 
-void init(){
-	/*
-	memset(activation_value, 0, sizeof(double) * 256);
-	memset(derivation_value, 0, sizeof(double) * 256);
-	memset(activated_output, 0, sizeof(double) * 10);
-	memset(derivated_output, 0, sizeof(double) * 10);
-	*/
-	activation_value.resize(257);
-	activated_output.resize(10);
-	derivation_value.resize(257);
-	derivated_output.resize(10);
-}
 
 double derivate_sigmoid( const std::vector<double>& w, const std::vector<double>& x) {
 
-	return (1 - exp( -vector_multiplication(w,x)) / sqrt(1 + exp( -vector_multiplication(w,x))));
+	//return (1 - exp( -vector_multiplication(w,x)) / sqrt(1 + exp( -vector_multiplication(w,x))));
+	double val = 1 / (1 + exp( -vector_multiplication(w, x)));
+	return val * ( 1 - val);
 }
 
 
@@ -45,13 +26,6 @@ double derivate_relu( const std::vector<double>& w, const std::vector<double>& x
 
 	if(z > 0 ) return 1;
 	else return 0;
-}
-
-
-// http://math.stackexchange.com/questions/945871/derivative-of-softmax-loss-function
-double derivate_softmax( const std::vector<double>& w, const std::vector<double>& x) {
-	//TO DO
-	return 0;
 }
 
 
@@ -67,14 +41,19 @@ double relu( const std::vector<double>& w, const std::vector<double>& x) {
 }
 
 
-double softmax( const std::vector<double>& w, const std::vector<double>& x) {
-
-	return 0;
+double sigmoid_val( double val) {
+	return 1 / ( 1 + exp( -val));
 }
 
 
-void cOutputLayer::forward_prop( const std::vector<double>& x, std::vector<double>& output) {
-	/*
+double derivate_sigmoid_val( double val) {
+	return sigmoid_val( val) * ( 1 - sigmoid_val( val));
+}
+
+
+
+void cSoftMaxLayer::forward_prop( const std::vector<double>& x, std::vector<double>& output) {
+
 	output.resize( w2.size());
 	for(int i =0; i < w2.size(); i++)
 		output[i] = exp( vector_multiplication( w2[i], x));
@@ -85,123 +64,77 @@ void cOutputLayer::forward_prop( const std::vector<double>& x, std::vector<doubl
 
 	for( int i = 0 ; i < w2.size() ; i++){
 		output[ i] /= sum;
-		activated_output[i] = output[i];	//굿
 	}
-	*/
-}
-
-void cOutputLayer::backward_prop( const std::vector<double>& x, const std::vector<double>& delta_p, std::vector<double>& output){
-
-	/*
-	//delta_p : 목표 출력값 (one-vs-all) label값만 1 나머지는 0.
-
-	output.resize( w2.size());
-	for(int j = 0; j < output.size(); j++){
-		//	output[j] = derivate_active_func(w2[j], x);	//softmax는 함수 파라미터 형식이 맞지 않아, outputlayer에서 직접 구현한다.
-	//	output[j] = activated_output[j] - delta_p[j]; //derivative softmax
-		derivated_output[j] = (delta_p[j] - activated_output[j]) * activated_output[j] * (1 - activated_output[j]);	//delta pk
-							//(delta_p[j] - activated_output[j]) * output[j];
-	}
-	for(int k = 0; k <= 256; k++){
-		for(int l = 0; l < output.size(); l++){
-			derivation_value[k] += derivated_output[l] * w2[l][k];//activation_value[k] * (1 - activation_value[k]);	//굿
-
-			//제일 중요한게, w2 업데이트 하는건데, 이게 사이트와 코드에서 구현상 차이 때문에 헷갈림.
-
-			w2[l][k] = w2[l][k] + LEARNING_RATE * derivated_output[l] * activation_value[k];
-
-		}
-	}
-	*/
-
 }
 
 
 void cHiddenLayer::forward_prop( const std::vector<double>& x, std::vector<double>& output) {
 
 	output.resize( w2.size());
-	for(int i =0; i < w2.size(); i++){
+	for(int i =0; i < w2.size(); i++)
 		output[i] = active_func(w2[i], x);
-		activation_value[i] = output[i]; //굿
-	}
 }
 
-void cHiddenLayer::backward_prop( const std::vector<double>& x, const std::vector<double>& t_p, std::vector<double>& output){
 
-	//t_p : 목표 출력값인데 Opi가 들어와있든지 아님 노쓸모
-	//Opi는 input layer의 값. 이 코드에서는 input값 그 자체. w2[p][i]
-
-	//여기에서 wji 업데이트를 해야함.
-
-
-	output.resize( w2.size());
-	for(int i = 0; i < output.size(); i++){
-		output[i];// = vector_multiplication(w2[i], x); output으로 파라미터를 넘겨주는 것이 어떤 역할인지 정확히 모르겠음..ㅠㅠ
-
-		/*
-		w2와 offset theta가 다른 것 같은데, 같이 쓰고 있어서 이 모양인 것 같음.
-		근데 의미상 weight값들이 backpropagation을 통해 수정되는게 맞는데.. w2값이 계속 작아져서 변화는 생기지만 의미가 없어짐.
-		backpropagation 수식이 잘못된 것 같은데, 모르겠음.. 사이트와 코드의 구현 차이 때문인듯.
-		*/
-		//derivate_active_func(w2[i], x);
-
-		for(int j = 0; j <= x.size(); j++) {
-
-			w2[i][j] = w2[i][j] + LEARNING_RATE * derivation_value[i];
-		}
-		
-	}
-
-	/*
-	2016.01.22
-
-	To Do : 
-
-	back propagation 수정. output layer에서 softmax 값을 구하는 것이 잘못되어서 parameter update가 안되고 있다.
-
-	*/
-
-}
-
+// back-prop
 void cMLP::train( const std::vector< datum>& data, const int iteration, const double learning_rate) {
 
 	for( int iter = 0 ; iter < iteration ; iter++) {
-		// TO DO
-		init();
-
+		
 		for( int nd = 0 ; nd < data.size() ; nd++) {
-			const auto& datum = data[ nd];
+			const auto& d = data[ nd];
 
-			// 2단계 ~ 4 단계
-			vector<double> output1 = datum.x;
+			
+			vector< vector<double>> save_net_pk( layers.size() + 1); // 입력층 + ( 히든 + 출력)레이어 해서 layers.size() + 1
+			vector<double> output1 = d.x;
+			save_net_pk[ 0].insert( save_net_pk[ 0].end(), output1.begin(), output1.end());
+			save_net_pk[ 0].push_back( 1);
 			for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
 				auto& layer = layers[ nlayer];
 
 				vector<double> output2;
-				layer->forward_prop( output1, output2);
+				const auto& w2 = layer->getW2();
+				output2.resize( w2.size());
+				for(int i =0; i < w2.size(); i++)
+					output2[i] = layer->active_func( w2[i], output1);
+				
 				output1 = output2;
-
+				save_net_pk[ nlayer + 1].insert( save_net_pk[ nlayer + 1].end(), output1.begin(), output1.end());
+				save_net_pk[ nlayer + 1].push_back( 1);
 			}
 
-
+			// 5단계 -------------------------------------------------------------------------------------
 			//one hot encoding
 			vector<double> t_p1( output1.size(), 0);
-			t_p1[ datum.label] = 1;			// 실제출력 값
+			t_p1[ d.label] = 1;			// 실제출력 값
+
+			vector<double> delta_p_k1( output1.size());
+			for( int ndelta = 0 ; ndelta < delta_p_k1.size() ; ndelta++)
+				delta_p_k1[ ndelta] = ( t_p1[ ndelta] - output1[ ndelta]) * output1[ ndelta] * ( 1 - output1[ ndelta]);
+			// 5단계 끝====================================================================================
+
+			
+			// 6단계 ~ 8단계
 			for( int nlayer = layers.size() - 1 ; nlayer >= 0 ; nlayer--) {
 
-				vector<double> t_p2;
 				auto& layer = layers[ nlayer];
-				layer->backward_prop( datum.x, t_p1, t_p2);
+				auto& w2 = layer->getW2();
+								
+				
 
+				// delta_p_j 구해서 이전 레이어로 전파
+				delta_p_k1 = delta_p_j;
+			}
+
+			if( nd % 1000 == 0) {
+				cout << "Now training.." << endl;
+				std::vector<int> pred_label = predict( data);
+				cout << "iter : " << iter << ", accuracy : " << calcMNIST_test_error( data, pred_label) << endl;
 			}
 		}
-
-		std::vector<int> pred_label = predict( data);
-		cout << "iter : " << iter << ", accuracy : " << calcMNIST_test_error( data, pred_label) << endl;
-		if(iter % 100 == 0) cout << "Now training.." << endl;
-		
 	}
 }
+
 
 std::vector<int> cMLP::predict( const std::vector< datum>& data) {
 
@@ -224,18 +157,3 @@ std::vector<int> cMLP::predict( const std::vector< datum>& data) {
 
 	return pred_label;
 }
-/*
-std::vector<int> predict( std::vector< datum>& data) {
-
-std::vector<int> pred_label( data.size(), 0);
-std::vector<double> pred_rate(10, 0);
-
-for(int i = 0; i < data.size(); i++){
-for(int j = 0; j < CLASS_SIZE; j++)
-pred_rate[j] = exp( vector_multiplication(data[i].x, w[j]));
-pred_label[i] = getMaxInt(pred_rate);
-}
-
-return pred_label;
-};
-*/
