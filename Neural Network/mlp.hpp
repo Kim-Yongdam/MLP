@@ -8,13 +8,13 @@
 #include "util.hpp"
 #include <string.h>
 
-double derivate_sigmoid( const std::vector<double>& w, const std::vector<double>& x);
-double derivate_relu( const std::vector<double>& w, const std::vector<double>& x);
-double derivate_softmax( const std::vector<double>& w, const std::vector<double>& x);
+void derivate_sigmoid( const std::vector<double>& w, const std::vector<double>& x, double&, double&);
+void derivate_relu( const std::vector<double>& w, const std::vector<double>& x, double&, double&);
+double derivate_sigmoid_one_dim( double val);
 double sigmoid( const std::vector<double>& w, const std::vector<double>& x);
 double relu( const std::vector<double>& w, const std::vector<double>& x);
-double softmax( const std::vector<double>& w, const std::vector<double>& x);
-
+double relu_val(double);
+double derivate_relu_one_dim(double);
 
 class cLayer {
 
@@ -25,9 +25,7 @@ protected:
 
 public:
 
-	cLayer( int _input, int _output,
-		double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
-		double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&)) : input( _input), output( _output) {
+	cLayer( int _input, int _output) : input( _input), output( _output) {
 
 			w2.resize( output);
 			for( int noutput = 0 ; noutput < output ; noutput++)
@@ -79,20 +77,29 @@ class cHiddenLayer : public cLayer{
 
 public:
 	double (*active_func)( const std::vector<double>&, const std::vector<double>&);
-	double (*derivate_active_func)( const std::vector<double>&, const std::vector<double>&);
+	void (*derivate_active_func)( const std::vector<double>&, const std::vector<double>&, double&, double&);
+	double (*derivate_one_dim)( double val);
 
 	cHiddenLayer( int _input, int _output,
-		double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
-		double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&))
-		: cLayer( _input, _output, _active_func, _derivate_active_func) {
-			active_func = _active_func;
-			derivate_active_func = _derivate_active_func;
+		double (*_active_func)( const std::vector<double>&, const std::vector<double>&))
+		: cLayer( _input, _output) {
+			if( _active_func == sigmoid) {
+				active_func = _active_func;
+				derivate_active_func = derivate_sigmoid;
+				derivate_one_dim = derivate_sigmoid_one_dim;
+			}
+			else if( _active_func == relu) {
+				active_func = _active_func;
+				derivate_active_func = derivate_relu;
+				derivate_one_dim = derivate_relu_one_dim;
+			}
 		}
 
 	void forward_prop( const std::vector<double>& x, std::vector<double>& output);
 };
 
 
+/*
 class cSoftMaxLayer : public cLayer{
 
 public:
@@ -107,7 +114,7 @@ public:
 
 	void forward_prop( const std::vector<double>& x, std::vector<double>& output);
 };
-
+*/
 
 
 class cMLP {
@@ -120,14 +127,14 @@ public:
 
 		// 히든 레이어 추가
 		for( int nlayer = 0 ; nlayer < neuron_nums.size() - 2 ; nlayer++) {
-			cHiddenLayer* layer = new cHiddenLayer( neuron_nums[ nlayer], neuron_nums[ nlayer + 1], sigmoid, derivate_sigmoid);
+			cHiddenLayer* layer = new cHiddenLayer( neuron_nums[ nlayer], neuron_nums[ nlayer + 1], sigmoid);
 
 			// 1단계
 			layer->initWeightUsingNguyenWidrow();
 			layers.push_back( layer);
 		}
 
-		cHiddenLayer* layer = new cHiddenLayer( neuron_nums[ neuron_nums.size() - 2], neuron_nums[ neuron_nums.size() - 1], sigmoid, derivate_sigmoid);
+		cHiddenLayer* layer = new cHiddenLayer( neuron_nums[ neuron_nums.size() - 2], neuron_nums[ neuron_nums.size() - 1], sigmoid);
 		layer->initWeightUsingNguyenWidrow();
 		layer->initWeightUsingNguyenWidrow();
 		layers.push_back( layer);

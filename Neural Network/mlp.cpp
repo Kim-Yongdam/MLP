@@ -7,25 +7,57 @@ using namespace cv;
 //http://www.aistudy.com/neural/MLP_kim.htm#_bookmark_165f298
 //Multi-Layer Perceptron 참조 페이지
 
-#define LEARNING_RATE 0.1
+#define LEARNING_RATE 0.3 //typical value : 0.3. 0.01과 0.001로 테스트해봤는데, 학습효과도 적고, 굉장히 느리다.
 #define CLASS_SIZE 10
 #define ITER_COUNT 1000
 
+/*
+Note : 2016-01-27
 
-double derivate_sigmoid( const std::vector<double>& w, const std::vector<double>& x) {
+추가해야 할 사항 :
 
-	//return (1 - exp( -vector_multiplication(w,x)) / sqrt(1 + exp( -vector_multiplication(w,x))));
-	double val = 1 / (1 + exp( -vector_multiplication(w, x)));
-	return val * ( 1 - val);
-}
+1. Regularization terms
+	1) Momentum : control the previous weight to prevent from converging local minima or saddle point. Typically, set to 0.9
+	2) L1, L2 : filtering term. It also prevent from converging local minima or saddle point.
+	
+2. Mini-batch
+	: It controls how many times we update parameter update in how many iterations.
+
+3. Drop-out
+	: It adjusts the speed of learning by deleting some edges(weights) in learning.(randomly choosing in each learning)
+
+4. Data-Normalization
+	: When we use the activation function such as, sigmoid and ReLU, we should put together the data sets to manage to learning.
+
+*/
 
 
-double derivate_relu( const std::vector<double>& w, const std::vector<double>& x) {
+void derivate_relu( const std::vector<double>& w, const std::vector<double>& x, double& activation, double& derivation) {
 
 	double z = vector_multiplication(w, x);
 
-	if(z > 0 ) return 1;
+	activation = max(0., z);
+
+	if(z >= 0.) derivation = 1;
+	else derivation = 0;	
+}
+
+double relu( const std::vector<double>& w, const std::vector<double>& x) {
+
+	return max(0., vector_multiplication(w,x));
+}
+
+double derivate_relu_one_dim(double val) {
+
+	if(val >= 0) return 1;
 	else return 0;
+
+}
+
+void derivate_sigmoid( const std::vector<double>& w, const std::vector<double>& x, double& activation, double& derivation) {
+
+	activation = 1 / (1 + exp( -vector_multiplication(w, x)));
+	derivation = activation * ( 1 - activation);
 }
 
 
@@ -35,23 +67,17 @@ double sigmoid( const std::vector<double>& w, const std::vector<double>& x) {
 }
 
 
-double relu( const std::vector<double>& w, const std::vector<double>& x) {
-
-	return max(0., vector_multiplication(w,x));
-}
-
-
 double sigmoid_val( double val) {
 	return 1 / ( 1 + exp( -val));
 }
 
 
-double derivate_sigmoid_val( double val) {
+double derivate_sigmoid_one_dim( double val) {
 	return sigmoid_val( val) * ( 1 - sigmoid_val( val));
 }
 
 
-
+/*
 void cSoftMaxLayer::forward_prop( const std::vector<double>& x, std::vector<double>& output) {
 
 	output.resize( w2.size());
@@ -66,6 +92,7 @@ void cSoftMaxLayer::forward_prop( const std::vector<double>& x, std::vector<doub
 		output[ i] /= sum;
 	}
 }
+*/
 
 
 void cHiddenLayer::forward_prop( const std::vector<double>& x, std::vector<double>& output) {
@@ -86,17 +113,27 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 
 
 			vector< vector<double>> save_o_pk( layers.size() + 1); // 입력층 + ( 히든 + 출력)레이어 해서 layers.size() + 1
+			vector< vector<double>> save_f_prime_pk( layers.size() + 1); // 입력층 + ( 히든 + 출력)레이어 해서 layers.size() + 1
 			vector<double> output1 = d.x;
 			save_o_pk[ 0].insert( save_o_pk[ 0].end(), output1.begin(), output1.end());
 			save_o_pk[ 0].push_back( 1);
+
+			for( int ninput = 0 ; ninput < save_o_pk[ 0].size() ; ninput++)
+				save_f_prime_pk[ 0].push_back( layers[ 0]->derivate_one_dim( save_o_pk[ 0][ ninput]));
 			for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
 				auto& layer = layers[ nlayer];
 
 				vector<double> output2;
 				const auto& w2 = layer->getW2();
 				output2.resize( w2.size());
-				for(int i =0; i < w2.size(); i++)
-					output2[i] = layer->active_func( w2[i], output1);
+				for(int i =0; i < w2.size(); i++) {
+					//output2[i] = layer->active_func( w2[i], output1);
+
+					double derivation;
+					layer->derivate_active_func( w2[i], output1, output2[i], derivation);
+					save_f_prime_pk[ nlayer + 1].push_back( derivation);
+				}
+				save_f_prime_pk[nlayer + 1].push_back( layer->derivate_one_dim( 1));
 
 				output1 = output2;
 				save_o_pk[ nlayer + 1].insert( save_o_pk[ nlayer + 1].end(), output1.begin(), output1.end());
@@ -109,8 +146,12 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 			t_p1[ d.label] = 1;			// 실제출력 값
 
 			vector<double> delta_p_k1( output1.size());
-			for( int ndelta = 0 ; ndelta < delta_p_k1.size() ; ndelta++)
-				delta_p_k1[ ndelta] = ( t_p1[ ndelta] - output1[ ndelta]) * output1[ ndelta] * ( 1 - output1[ ndelta]);
+			for( int ndelta = 0 ; ndelta < delta_p_k1.size() ; ndelta++){
+				//if(output1[ndelta]>=0) 
+				delta_p_k1[ ndelta] = ( t_p1[ ndelta] - output1[ ndelta]) * save_f_prime_pk[ save_f_prime_pk.size() - 1][ ndelta]; //output1[ndelta] * (1 - output1[ndelta]);
+			//	else delta_p_k1[ ndelta] = 0; //( t_p1[ ndelta] - output1[ ndelta]) * 0;
+
+			}
 			// 5단계 끝====================================================================================
 
 
@@ -133,9 +174,9 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 				*/
 				for(int j = 0; j < current_layer_size; j++) {
 					for(int k = 0; k < previous_layer_size - 1; k++) {
-						if(nlayer == 1) delta_p_j[j] += delta_p_k1[k] * (w2[k][j] * save_o_pk[nlayer][j]) * (1 - save_o_pk[nlayer][j]);
+						if(nlayer == 1) delta_p_j[j] += delta_p_k1[k] * w2[k][j] * save_f_prime_pk[ nlayer][ j];
 						w2[k][j] = w2[k][j] + (learning_rate * delta_p_k1[k] * save_o_pk[nlayer][j]);
-						w2[k][current_layer_size - 1] = w2[k][current_layer_size-1] + learning_rate * delta_p_k1[k];
+						//w2[k][current_layer_size - 1] = w2[k][current_layer_size-1] + learning_rate * delta_p_k1[k];
 					}
 				}
 				// delta_p_j 구해서 이전 레이어로 전파
