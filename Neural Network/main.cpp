@@ -12,7 +12,7 @@ int main( void) {
 	cMLP mlp( neurons);
 
 	vector< datum> train_data, test_data;
-	getMNIST( "../../MNIST DB", train_data, 60000, test_data, 10000);
+	getMNIST( "../../MNIST DB", train_data, 60000, test_data, 0);
 	std::for_each( train_data.begin(), train_data.end(), [] ( datum& val1) { 
 		std::for_each( val1.x.begin(), val1.x.end(), [] ( double& val2) {
 			val2 /= 255.; 
@@ -20,7 +20,7 @@ int main( void) {
 	});
 
 	std::random_shuffle( train_data.begin(), train_data.end());
-	mlp.train( train_data, 100, 0.3);
+	mlp.train( train_data, 10, 0.3);
 
 	double result;
 
