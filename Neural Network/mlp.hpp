@@ -119,11 +119,14 @@ public:
 
 class cMLP {
 private:
+	bool is_train;
 	std::vector< cHiddenLayer*> layers;
 
 public:
 
 	cMLP( std::vector<int> neuron_nums) {
+
+		is_train = false;
 
 		// 히든 레이어 추가
 		for( int nlayer = 0 ; nlayer < neuron_nums.size() - 2 ; nlayer++) {
@@ -143,6 +146,83 @@ public:
 
 	void train( const std::vector< datum>& data, const int iter, const double learning_rate);
 	std::vector<int> predict( const std::vector< datum>& data);
+
+
+	enum TYPE { SIGMOID, RELU};
+	void saveModel( std::string save_file_name) {
+
+		if( is_train == false) {
+			std::cout << "학습 먼저" << std::endl;
+			assert( 0);
+		}
+		else {
+			std::ofstream fout( save_file_name, std::ios::binary);
+
+			int layers_size = layers.size();
+			fout.write( reinterpret_cast<const char *> ( &layers_size), sizeof( layers_size));
+			
+			for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
+				const auto& w2 = layers[ nlayer]->getW2();
+
+				int type = SIGMOID;
+				fout.write( reinterpret_cast<const char *> ( &type), sizeof( type));
+
+				int input = w2[0].size() - 1; // -1 bias 제외
+				int output = w2.size();
+				fout.write( reinterpret_cast<const char *> ( &input), sizeof( input));
+				fout.write( reinterpret_cast<const char *> ( &output), sizeof( output));
+
+				for( int nk = 0 ; nk < w2.size() ; nk++) {
+					const auto& w = w2[ nk];
+					for( int nj = 0 ; nj < w.size() ; nj++)
+						fout.write( reinterpret_cast<const char *> ( &( w[ nj])), sizeof( w[ nj]));
+				}
+			}
+		}
+	}
+
+	void loadModel( std::string load_file_name) {
+		is_train = true;
+		if( layers.size() > 0) {
+			for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++)
+				delete layers[ nlayer];
+			layers.clear();
+		}
+
+		std::ifstream fin( load_file_name, std::ios::binary);
+
+		int layer_size;
+		char* str;
+		fin.read( reinterpret_cast<char *> ( &layer_size), sizeof( layer_size));
+		
+		for( int nlayer = 0 ; nlayer < layer_size ; nlayer++) {
+
+			int activation_type;
+			fin.read( reinterpret_cast<char *> ( &activation_type), sizeof( activation_type));
+			
+			int input, output;
+			fin.read( reinterpret_cast<char *> ( &input), sizeof( input));
+			fin.read( reinterpret_cast<char *> ( &output), sizeof( output));
+				
+			double (*active_func)( const std::vector<double>&, const std::vector<double>&) = NULL;
+			if( activation_type == SIGMOID)
+				active_func = sigmoid;
+			else if( activation_type == RELU)
+				active_func = relu;
+			else
+				assert( 0);
+
+			cHiddenLayer *layer = new cHiddenLayer( input, output, active_func);
+			auto& w2 = layer->getW2();
+			for( int nk = 0 ; nk < w2.size() ; nk++) {
+				auto& w = w2[ nk];
+				for( int nj = 0 ; nj < w.size() ; nj++)
+					fin.read( reinterpret_cast<char *> ( &( w[ nj])), sizeof( w[ nj]));
+			}
+
+			layers.push_back( layer);
+		}
+	}
 
 	~cMLP( ) {
 		for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++)
