@@ -8,6 +8,7 @@ using namespace cv;
 //Multi-Layer Perceptron 참조 페이지
 
 #define LEARNING_RATE 0.3 //typical value : 0.3. 0.01과 0.001로 테스트해봤는데, 학습효과도 적고, 굉장히 느리다.
+#define MOMENTUM 0.9
 #define CLASS_SIZE 10
 #define ITER_COUNT 1000
 
@@ -163,6 +164,7 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 				vector<double> delta_p_j(257);
 				int current_layer_size = save_o_pk[nlayer].size();
 				int previous_layer_size = save_o_pk[nlayer+1].size();
+				double weight_change;
 				//delta_p_j는 이전 레이어의 error값인 delta_p_k1과 O_pj(save_o_pk의 두번째 레이어)으로 계산한다.
 				/*
 				delta_pj = calculated error value in current layer
@@ -175,7 +177,8 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 				for(int j = 0; j < current_layer_size; j++) {
 					for(int k = 0; k < previous_layer_size - 1; k++) {
 						if(nlayer == 1) delta_p_j[j] += delta_p_k1[k] * w2[k][j] * save_f_prime_pk[ nlayer][ j];
-						w2[k][j] = w2[k][j] + (learning_rate * delta_p_k1[k] * save_o_pk[nlayer][j]);
+						weight_change = learning_rate * delta_p_k1[k] * save_o_pk[nlayer][j];
+						w2[k][j] = w2[k][j] + (MOMENTUM * weight_change);
 						//w2[k][current_layer_size - 1] = w2[k][current_layer_size-1] + learning_rate * delta_p_k1[k];
 					}
 				}
