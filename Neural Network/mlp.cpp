@@ -188,17 +188,30 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 
 			if( nd % 1000 == 0) {
 				cout << "Now training.." << endl;
+				is_train = true;
 				std::vector<int> pred_label = predict( data);
+				
 				cout << "iter : " << iter << ", accuracy : " << calcMNIST_test_error( data, pred_label) << endl;
+				
+				//saveModel( "model");
+				is_train = false;
 			}
 		}
 	}
+
+	is_train = true;
 }
 
 
 std::vector<int> cMLP::predict( const std::vector< datum>& data) {
 
 	std::vector<int> pred_label( data.size(), 0);
+
+	if( is_train == false) {
+		cout << "ÇÐ½À ¾ÈµÊ" << endl;
+		assert( 0);
+		return pred_label;
+	}
 
 	for(int iter = 0; iter < data.size(); iter++){
 
