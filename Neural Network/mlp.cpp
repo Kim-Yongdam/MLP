@@ -7,20 +7,25 @@ using namespace cv;
 //http://www.aistudy.com/neural/MLP_kim.htm#_bookmark_165f298
 //Multi-Layer Perceptron 참조 페이지
 
-#define LEARNING_RATE 0.3 //typical value : 0.3. 0.01과 0.001로 테스트해봤는데, 학습효과도 적고, 굉장히 느리다.
+//#define LEARNING_RATE 0.3 //typical value : 0.3. 0.01과 0.001로 테스트해봤는데, 학습효과도 적고, 굉장히 느리다.
 #define MOMENTUM 0.9
 #define CLASS_SIZE 10
-#define ITER_COUNT 1000
-#define MINI_BATCH_SIZE 1
+//#define ITER_COUNT 1000
+#define MINI_BATCH_SIZE 100
 
 /*
 Note : 2016-01-27
 
+마무리 된 것들 : 
+
+1) Momentum : control the previous weight to prevent from converging local minima or saddle point. Typically, set to 0.9 //Done(0127)
+
+
 추가해야 할 사항 :
 
 1. Regularization terms
-1) Momentum : control the previous weight to prevent from converging local minima or saddle point. Typically, set to 0.9
-2) L1, L2 : filtering term. It also prevent from converging local minima or saddle point.
+
+1) L1, L2 : filtering term. It also prevent from converging local minima or saddle point.
 
 2. Mini-batch
 : It controls how many times we update parameter update in how many iterations.
@@ -108,13 +113,14 @@ void cHiddenLayer::forward_prop( const std::vector<double>& x, std::vector<doubl
 std::vector< datum> getMINIBATCH( const std::vector< datum>& data, const int minibatch_size) {
 
 	static int idx = 0;
-	
+
 	std::vector< datum> mini_batch;
 	for( int nd = 0 ; nd < minibatch_size ; nd++) {
 
-		idx++;
 		idx %= data.size();
 		mini_batch.push_back( data[ idx]);
+		idx++;
+
 	}
 
 	return mini_batch;
@@ -122,7 +128,7 @@ std::vector< datum> getMINIBATCH( const std::vector< datum>& data, const int min
 
 
 // back-prop
-void cMLP::train( const std::vector< datum>& data, const int iteration, const double learning_rate) {
+void cMLP::train( const std::vector< datum>& data, const int iteration, const double learning_rate, const int show_train_error_interval) {
 
 	for( int iter = 0 ; iter < iteration ; iter++) {
 
@@ -133,7 +139,7 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 
 		save_o_pk[ 0].resize( data[0].x.size() + 1, 0);
 		save_f_prime_pk[ 0].resize( save_o_pk[ 0].size(), 0);
-		
+
 		for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
 			auto& layer = layers[ nlayer];
 			auto& w2 = layer->getW2();
@@ -202,6 +208,7 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 			std::for_each( save_f_prime_pk_element.begin(), save_f_prime_pk_element.end(), [] ( double& val) { val /= MINI_BATCH_SIZE;});
 		}
 
+
 		// 6단계 ~ 8단계
 		for( int nlayer = layers.size() - 1 ; nlayer >= 0 ; nlayer--) {
 
@@ -232,9 +239,11 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 			delta_p_k1 = delta_p_j;
 		}
 
-		cout << "Now training.." << endl;
-		std::vector<int> pred_label = predict( data);
-		cout << "iter : " << iter << ", accuracy : " << calcMNIST_test_error( data, pred_label) << endl;
+		if( iter % show_train_error_interval == 0) {
+			cout << "Now training.." << endl;
+			std::vector<int> pred_label = predict( data);
+			cout << "iter : " << iter << ", accuracy : " << calcMNIST_test_error( data, pred_label) << endl;
+		}
 	}
 }
 
