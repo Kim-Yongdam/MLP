@@ -144,7 +144,8 @@ public:
 	}
 
 
-	void train( const std::vector< datum>& data, const int iter, const double learning_rate, const int show_train_error_interval);
+	void train( const std::vector< datum>& data, const int iter, const double learning_rate, const int show_train_error_interval,
+		const int L1, const int L2);
 	std::vector<int> predict( const std::vector< datum>& data);
 
 

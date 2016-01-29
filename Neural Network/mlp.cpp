@@ -11,15 +11,19 @@ using namespace cv;
 #define MOMENTUM 0.9
 #define CLASS_SIZE 10
 //#define ITER_COUNT 1000
-#define MINI_BATCH_SIZE 100
+#define MINI_BATCH_SIZE 17
+#define LAMBDA 0.01
 
 /*
 Note : 2016-01-27
 
 마무리 된 것들 : 
 
-1) Momentum : control the previous weight to prevent from converging local minima or saddle point. Typically, set to 0.9 //Done(0127)
-
+1. Momentum : control the previous weight to prevent from converging local minima or saddle point. Typically, set to 0.9 //Done(0127)
+2. Mini-batch
+: It controls how many times we update parameter update in how many iterations.
+//왜인지는 모르겠지만, mini-batch size 17, learning_rate 0.99, iteration 100000일때 89%를 보임. 다른 hyperparameter값으로는 도달하지 못함.
++ 왜 90%를 못넘어가는지 모르겠음.(Almost done 0128)
 
 추가해야 할 사항 :
 
@@ -27,8 +31,7 @@ Note : 2016-01-27
 
 1) L1, L2 : filtering term. It also prevent from converging local minima or saddle point.
 
-2. Mini-batch
-: It controls how many times we update parameter update in how many iterations.
+
 
 3. Drop-out
 : It adjusts the speed of learning by deleting some edges(weights) in learning.(randomly choosing in each learning)
@@ -128,7 +131,8 @@ std::vector< datum> getMINIBATCH( const std::vector< datum>& data, const int min
 
 
 // back-prop
-void cMLP::train( const std::vector< datum>& data, const int iteration, const double learning_rate, const int show_train_error_interval) {
+void cMLP::train( const std::vector< datum>& data, const int iteration, const double learning_rate, const int show_train_error_interval,
+				 const int L1, const int L2) {
 
 	for( int iter = 0 ; iter < iteration ; iter++) {
 
@@ -183,6 +187,7 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 				save_o_pk[ nlayer + 1][ output1.size()] += 1;
 			}
 
+
 			// 5단계 -------------------------------------------------------------------------------------
 			//one hot encoding
 			vector<double> t_p1( output1.size(), 0);
@@ -190,13 +195,13 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 
 			//	vector<double> delta_p_k1( output1.size());
 			for( int ndelta = 0 ; ndelta < delta_p_k1.size() ; ndelta++){
-				//if(output1[ndelta]>=0) 
-				delta_p_k1[ ndelta] += (( t_p1[ ndelta] - output1[ ndelta]) * save_f_prime_pk[ save_f_prime_pk.size() - 1][ ndelta]) / ( batch_iter + 1); //output1[ndelta] * (1 - output1[ndelta]);
-				//if(MINI_BATCH_SIZE > 1) delta_p_k1[ndelta] += delta_p_k1[ndelta]; //When are not stochasitc,
-				//	else delta_p_k1[ ndelta] = 0; //( t_p1[ ndelta] - output1[ ndelta]) * 0;
-
+				//L1, L2 regularization
+				delta_p_k1[ ndelta] += (( t_p1[ ndelta] - output1[ ndelta]) * save_f_prime_pk[ save_f_prime_pk.size() - 1][ ndelta]);
 			}
 			// 5단계 끝====================================================================================
+
+			for( int n = 0 ; n < save_f_prime_pk[ layers.size()].size() ; n++)
+				save_f_prime_pk[ layers.size()][ n] = 0;
 		}//mini-batch iteration
 
 		std::for_each( delta_p_k1.begin(), delta_p_k1.end(), [] ( double& val) { val /= MINI_BATCH_SIZE;});
@@ -218,6 +223,8 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 			int current_layer_size = save_o_pk[nlayer].size();
 			int previous_layer_size = save_o_pk[nlayer+1].size();
 			double weight_change;
+			double L1_term;
+			double L2_term;
 			//delta_p_j는 이전 레이어의 error값인 delta_p_k1과 O_pj(save_o_pk의 두번째 레이어)으로 계산한다.
 			/*
 			delta_pj = calculated error value in current layer
@@ -230,9 +237,11 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 			for(int j = 0; j < current_layer_size; j++) {
 				for(int k = 0; k < previous_layer_size - 1; k++) {
 					if(nlayer == 1) delta_p_j[j] += delta_p_k1[k] * w2[k][j] * save_f_prime_pk[ nlayer][ j];
-					weight_change = learning_rate * delta_p_k1[k] * save_o_pk[nlayer][j];
+					L1_term = L1 * LAMBDA * (w2[k][j] / abs(w2[k][j])) / current_layer_size;
+					L2_term = L2 * LAMBDA * w2[k][j] / current_layer_size;
+					weight_change = learning_rate * (delta_p_k1[k] + L1_term + L2_term) * save_o_pk[nlayer][j];
 					w2[k][j] = w2[k][j] + (MOMENTUM * weight_change);
-					//w2[k][current_layer_size - 1] = w2[k][current_layer_size-1] + learning_rate * delta_p_k1[k];
+
 				}
 			}
 			// delta_p_j 구해서 이전 레이어로 전파

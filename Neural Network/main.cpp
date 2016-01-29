@@ -15,6 +15,7 @@ int main( void) {
 	int train_data_size = 60000;
 	int test_data_size = 10000;
 	
+	
 	getMNIST( "../../MNIST DB", train_data, train_data_size, test_data, test_data_size);
 	std::for_each( train_data.begin(), train_data.end(), [] ( datum& val1) { 
 		std::for_each( val1.x.begin(), val1.x.end(), [] ( double& val2) {
@@ -25,7 +26,7 @@ int main( void) {
 	std::random_shuffle( train_data.begin(), train_data.end());
 	
 	//mlp.loadModel( "model");
-	mlp.train( train_data, 20000, 0.01, 100);
+	mlp.train( train_data, 10000, 0.3, 1000, 0, 1);
 
 	double result;
 
