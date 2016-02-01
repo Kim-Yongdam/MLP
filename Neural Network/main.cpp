@@ -26,7 +26,7 @@ int main( void) {
 	std::random_shuffle( train_data.begin(), train_data.end());
 	
 	//mlp.loadModel( "model");
-	mlp.train( train_data, 10000, 0.3, 1000, 0, 1);
+	mlp.train( train_data, 100000, 0.1, 10000, 0, 1);
 
 	double result;
 

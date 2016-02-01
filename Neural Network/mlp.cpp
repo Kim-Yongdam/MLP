@@ -11,7 +11,7 @@ using namespace cv;
 #define MOMENTUM 0.9
 #define CLASS_SIZE 10
 //#define ITER_COUNT 1000
-#define MINI_BATCH_SIZE 17
+#define MINI_BATCH_SIZE 10
 #define LAMBDA 0.01
 
 /*
@@ -24,14 +24,11 @@ Note : 2016-01-27
 : It controls how many times we update parameter update in how many iterations.
 //왜인지는 모르겠지만, mini-batch size 17, learning_rate 0.99, iteration 100000일때 89%를 보임. 다른 hyperparameter값으로는 도달하지 못함.
 + 왜 90%를 못넘어가는지 모르겠음.(Almost done 0128)
+3. L1, L2 : filtering term. It also prevent from converging local minima or saddle point.
+: 수식 구현은 했지만, 역시 90%를 넘어가지 못함. hyper-paramater의 영향을 받는것 같음. 수정해야함.(20160201)
+
 
 추가해야 할 사항 :
-
-1. Regularization terms
-
-1) L1, L2 : filtering term. It also prevent from converging local minima or saddle point.
-
-
 
 3. Drop-out
 : It adjusts the speed of learning by deleting some edges(weights) in learning.(randomly choosing in each learning)
@@ -128,6 +125,8 @@ std::vector< datum> getMINIBATCH( const std::vector< datum>& data, const int min
 
 	return mini_batch;
 }
+
+
 
 
 // back-prop
