@@ -27,9 +27,9 @@ public:
 
 	cLayer( int _input, int _output) : input( _input), output( _output) {
 
-			w2.resize( output);
-			for( int noutput = 0 ; noutput < output ; noutput++)
-				w2[ noutput].resize( input + 1);	// +1은 bias
+		w2.resize( output);
+		for( int noutput = 0 ; noutput < output ; noutput++)
+			w2[ noutput].resize( input + 1);	// +1은 bias
 	}
 
 	void initWeightUsingUniformDistribution( double low, double high) {
@@ -67,6 +67,21 @@ public:
 		return w2;
 	}
 
+	/* Dropout the W2
+	std::vector<std ::vector<double>>& setDropoutW2(int size) {
+
+		std::default_random_engine generator;
+		std::uniform_real_distribution<double> distribution(0, size);
+		vector<vector <double>> w;
+		for( int noutput = 0 ; noutput < w2.size() ; noutput++) {
+
+			//	w = w2[distribution( generator) ];
+		}
+
+		return w;
+
+	}
+	*/
 	void dataNormalization( ) {
 	}
 };
@@ -79,9 +94,10 @@ public:
 	double (*active_func)( const std::vector<double>&, const std::vector<double>&);
 	void (*derivate_active_func)( const std::vector<double>&, const std::vector<double>&, double&, double&);
 	double (*derivate_one_dim)( double val);
+	double dropout_rate;
 
 	cHiddenLayer( int _input, int _output,
-		double (*_active_func)( const std::vector<double>&, const std::vector<double>&))
+		double (*_active_func)( const std::vector<double>&, const std::vector<double>&), double _dropout_rate = 0)
 		: cLayer( _input, _output) {
 			if( _active_func == sigmoid) {
 				active_func = _active_func;
@@ -93,9 +109,12 @@ public:
 				derivate_active_func = derivate_relu;
 				derivate_one_dim = derivate_relu_one_dim;
 			}
-		}
+
+			dropout_rate = _dropout_rate;
+	}
 
 	void forward_prop( const std::vector<double>& x, std::vector<double>& output);
+	//vector<vector<double>> set_dropout_layer();
 };
 
 
@@ -103,19 +122,30 @@ public:
 class cSoftMaxLayer : public cLayer{
 
 public:
-	cSoftMaxLayer( int _input, int _output,
-		double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
-		double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&))
-		: cLayer( _input, _output, _active_func, _derivate_active_func) {
+cSoftMaxLayer( int _input, int _output,
+double (*_active_func)( const std::vector<double>&, const std::vector<double>&), 
+double (*_derivate_active_func)( const std::vector<double>&, const std::vector<double>&))
+: cLayer( _input, _output, _active_func, _derivate_active_func) {
 
-			assert( _active_func == softmax);
-			assert( _derivate_active_func == derivate_softmax);
-	}
+assert( _active_func == softmax);
+assert( _derivate_active_func == derivate_softmax);
+}
 
-	void forward_prop( const std::vector<double>& x, std::vector<double>& output);
+void forward_prop( const std::vector<double>& x, std::vector<double>& output);
 };
 */
 
+struct sLayer_shape {
+	int input;
+	int output;
+	double dropout_rate;
+
+	sLayer_shape( int _input, int _output, double _dropout_rate) {
+		input = _input;
+		output = _output;
+		dropout_rate = _dropout_rate;
+	}
+};
 
 class cMLP {
 private:
@@ -143,6 +173,43 @@ public:
 		layers.push_back( layer);
 	}
 
+	
+
+	cMLP( std::vector< sLayer_shape> l_shape) {
+
+		is_train = false;
+
+		// 히든 레이어 추가
+		for( int nlayer = 0 ; nlayer < l_shape.size() ; nlayer++) {
+			cHiddenLayer* layer = new cHiddenLayer( l_shape[ nlayer].input, l_shape[ nlayer].output, sigmoid, l_shape[ nlayer].dropout_rate);
+
+			layer->initWeightUsingNguyenWidrow();
+			layers.push_back( layer);
+		}
+	}
+
+	/*
+		Adjusting the hiddenlayer.
+		Dropout the half-size.
+	*/
+	/*
+	std::vector<cHiddenLayer*, std::allocator<cHiddenLayer *>> set_dropout_layer (int layer_size) {
+
+		std::default_random_engine generator;
+		std::uniform_real_distribution<int> distribution(0, layer_size);
+
+		auto& hidden_layer = layers[1];
+		//auto& dropout_layer;
+
+		for( int noutput = 0 ; noutput < layer_size ; noutput++) {
+
+			dropout_layer[noutput] = hidden_layer[ distribution( generator) ];
+		}
+
+		return dropout_layer;
+
+	}
+	*/
 
 	void train( const std::vector< datum>& data, const int iter, const double learning_rate, const int show_train_error_interval,
 		const int L1, const int L2);
@@ -161,7 +228,7 @@ public:
 
 			int layers_size = layers.size();
 			fout.write( reinterpret_cast<const char *> ( &layers_size), sizeof( layers_size));
-			
+
 			for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
 				const auto& w2 = layers[ nlayer]->getW2();
 
@@ -195,16 +262,16 @@ public:
 		int layer_size;
 		char* str;
 		fin.read( reinterpret_cast<char *> ( &layer_size), sizeof( layer_size));
-		
+
 		for( int nlayer = 0 ; nlayer < layer_size ; nlayer++) {
 
 			int activation_type;
 			fin.read( reinterpret_cast<char *> ( &activation_type), sizeof( activation_type));
-			
+
 			int input, output;
 			fin.read( reinterpret_cast<char *> ( &input), sizeof( input));
 			fin.read( reinterpret_cast<char *> ( &output), sizeof( output));
-				
+
 			double (*active_func)( const std::vector<double>&, const std::vector<double>&) = NULL;
 			if( activation_type == SIGMOID)
 				active_func = sigmoid;

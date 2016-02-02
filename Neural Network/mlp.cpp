@@ -11,11 +11,11 @@ using namespace cv;
 #define MOMENTUM 0.9
 #define CLASS_SIZE 10
 //#define ITER_COUNT 1000
-#define MINI_BATCH_SIZE 10
+#define MINI_BATCH_SIZE 1
 #define LAMBDA 0.01
 
 /*
-Note : 2016-01-27
+Note : 2016-02-02
 
 마무리 된 것들 : 
 
@@ -29,6 +29,10 @@ Note : 2016-01-27
 
 
 추가해야 할 사항 :
+
+1. Momentum : 원래 의미대로 weight의 변화율을 저장하고 그것을 변화 시켜야함.
+
+2, learning rate : 학습 진행시 iteration이 커지면 줄어들어야함. 이것 때문에 90%를 못넘는것 같음. 90%에 다가갈때쯤 iteration이 커지면서 다시 발산함.
 
 3. Drop-out
 : It adjusts the speed of learning by deleting some edges(weights) in learning.(randomly choosing in each learning)
@@ -127,8 +131,6 @@ std::vector< datum> getMINIBATCH( const std::vector< datum>& data, const int min
 }
 
 
-
-
 // back-prop
 void cMLP::train( const std::vector< datum>& data, const int iteration, const double learning_rate, const int show_train_error_interval,
 				 const int L1, const int L2) {
@@ -143,8 +145,11 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 		save_o_pk[ 0].resize( data[0].x.size() + 1, 0);
 		save_f_prime_pk[ 0].resize( save_o_pk[ 0].size(), 0);
 
+//		auto& d_layer = set_dropout_layer(layers.size() /2);
+
 		for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
-			auto& layer = layers[ nlayer];
+			auto& layer = layers[ nlayer];			
+			
 			auto& w2 = layer->getW2();
 
 			save_f_prime_pk[ nlayer + 1].resize( w2.size() + 1, 0);

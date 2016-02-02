@@ -4,11 +4,18 @@ using namespace std;
 
 int main( void) {
 
+	/*
 	vector<int> neurons;
 	neurons.push_back( 28 * 28);
 	neurons.push_back( 256);
 	neurons.push_back( 10);
 	cMLP mlp( neurons);
+	*/
+
+	vector< sLayer_shape> l_shapes;
+	l_shapes.push_back( sLayer_shape( 28 * 28, 256, 0.5));
+	l_shapes.push_back( sLayer_shape( 256, 10, 0.8));
+	cMLP mlp( l_shapes);
 
 	vector< datum> train_data, test_data;
 
@@ -26,7 +33,7 @@ int main( void) {
 	std::random_shuffle( train_data.begin(), train_data.end());
 	
 	//mlp.loadModel( "model");
-	mlp.train( train_data, 100000, 0.1, 10000, 0, 1);
+	mlp.train( train_data, 500000, 0.7, 10000, 0, 1);
 
 	double result;
 
