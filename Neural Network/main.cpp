@@ -33,7 +33,7 @@ int main( void) {
 	std::random_shuffle( train_data.begin(), train_data.end());
 	
 	//mlp.loadModel( "model");
-	mlp.train( train_data, 500000, 0.7, 10000, 0, 1);
+	mlp.train( train_data, 150000, 0.9, 10000, 0, 0);
 
 	double result;
 
