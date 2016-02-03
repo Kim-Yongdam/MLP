@@ -67,6 +67,14 @@ public:
 		return w2;
 	}
 
+	int getInputDim( ) {
+		return input;
+	}
+
+	int getOutputDim( ) {
+		return output;
+	}
+
 	/* Dropout the W2
 	std::vector<std ::vector<double>>& setDropoutW2(int size) {
 
@@ -212,9 +220,12 @@ public:
 	*/
 
 	void train( const std::vector< datum>& data, const int iter, const double learning_rate, const int show_train_error_interval,
-		const int L1, const int L2);
+		const double momentum, const double L1, const double L2);
 	std::vector<int> predict( const std::vector< datum>& data);
 
+	const std::vector< cHiddenLayer*> getLayer() {
+		return layers;
+	}
 
 	enum TYPE { SIGMOID, RELU};
 	void saveModel( std::string save_file_name) {
