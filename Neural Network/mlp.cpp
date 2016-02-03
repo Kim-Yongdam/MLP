@@ -7,12 +7,12 @@ using namespace cv;
 //http://www.aistudy.com/neural/MLP_kim.htm#_bookmark_165f298
 //Multi-Layer Perceptron 참조 페이지
 
-//#define LEARNING_RATE 0.3 //typical value : 0.3. 0.01과 0.001로 테스트해봤는데, 학습효과도 적고, 굉장히 느리다.
+#define LEARNING_RATE 0.3 //typical value : 0.3. 0.01과 0.001로 테스트해봤는데, 학습효과도 적고, 굉장히 느리다.
 #define MOMENTUM 0.9
 #define CLASS_SIZE 10
 //#define ITER_COUNT 1000
 #define MINI_BATCH_SIZE 1
-#define LAMBDA 0.01
+#define LAMBDA 0
 
 /*
 Note : 2016-02-02
@@ -133,8 +133,19 @@ std::vector< datum> getMINIBATCH( const std::vector< datum>& data, const int min
 
 // back-prop
 void cMLP::train( const std::vector< datum>& data, const int iteration, const double learning_rate, const int show_train_error_interval,
-				 const int L1, const int L2) {
+				 const double momentum, const double L1, const double L2) {
 
+	vector< vector< vector<double>>> weight_changes_layers;
+	for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
+
+		const auto& layer = layers[ nlayer];
+				
+		vector< vector<double>> weight_changes;
+		for( int nw = 0 ; nw < layer->getOutputDim() ; nw++)
+			weight_changes.push_back( vector<double>( layer->getInputDim() + 1, 0));
+		weight_changes_layers.push_back( weight_changes);
+	}
+	
 	for( int iter = 0 ; iter < iteration ; iter++) {
 
 		auto& mini_batch_data = getMINIBATCH( data, MINI_BATCH_SIZE);
@@ -208,7 +219,28 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 				save_f_prime_pk[ layers.size()][ n] = 0;
 		}//mini-batch iteration
 
-		std::for_each( delta_p_k1.begin(), delta_p_k1.end(), [] ( double& val) { val /= MINI_BATCH_SIZE;});
+		int divide_m = 0;
+		double abssum_weight = 0;
+		double sqsum_weight = 0;
+		for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
+			const auto& layer = layers[ nlayer];
+			
+			auto& w2 = layer->getW2();
+			for( int noutput = 0 ; noutput < w2.size() ; noutput++) {
+
+				auto& w = w2[ noutput];
+				for( int ninput = 0 ; ninput < w.size() ; ninput++) {
+					abssum_weight += abs( w[ ninput]);
+					sqsum_weight += pow( w[ ninput], 2);
+				}
+				divide_m += w.size();
+			}
+		}
+		abssum_weight /= divide_m;
+		sqsum_weight /= divide_m;
+
+		std::for_each( delta_p_k1.begin(), delta_p_k1.end(), [ &L1, &L2, &abssum_weight, &sqsum_weight] ( double& val) { val /= MINI_BATCH_SIZE;
+																				val += L1 * abssum_weight + L2 * sqsum_weight;});
 		for( int nlayer = 0 ; nlayer < layers.size() + 1 ; nlayer++) {
 
 			auto& save_o_pk_element = save_o_pk[ nlayer];
@@ -229,6 +261,9 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 			double weight_change;
 			double L1_term;
 			double L2_term;
+			auto& weight_changes = weight_changes_layers[ nlayer];		
+
+
 			//delta_p_j는 이전 레이어의 error값인 delta_p_k1과 O_pj(save_o_pk의 두번째 레이어)으로 계산한다.
 			/*
 			delta_pj = calculated error value in current layer
@@ -243,9 +278,10 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 					if(nlayer == 1) delta_p_j[j] += delta_p_k1[k] * w2[k][j] * save_f_prime_pk[ nlayer][ j];
 					L1_term = L1 * LAMBDA * (w2[k][j] / abs(w2[k][j])) / current_layer_size;
 					L2_term = L2 * LAMBDA * w2[k][j] / current_layer_size;
-					weight_change = learning_rate * (delta_p_k1[k] + L1_term + L2_term) * save_o_pk[nlayer][j];
-					w2[k][j] = w2[k][j] + (MOMENTUM * weight_change);
 
+					weight_change = learning_rate * (delta_p_k1[k] + L1_term + L2_term) * save_o_pk[nlayer][j];
+					w2[k][j] = w2[k][j] + LEARNING_RATE * weight_change + momentum * weight_changes[ k][ j];
+					weight_changes[ k][ j] = weight_change;
 				}
 			}
 			// delta_p_j 구해서 이전 레이어로 전파
