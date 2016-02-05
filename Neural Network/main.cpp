@@ -23,7 +23,7 @@ int main( void) {
 	int test_data_size = 10000;
 	
 	
-	getMNIST( "../../DB/MNIST/", train_data, train_data_size, test_data, test_data_size);
+	getMNIST( "../../MNIST DB/", train_data, train_data_size, test_data, test_data_size);
 	std::for_each( train_data.begin(), train_data.end(), [] ( datum& val1) { 
 		std::for_each( val1.x.begin(), val1.x.end(), [] ( double& val2) {
 			val2 /= 255.; 
@@ -33,7 +33,7 @@ int main( void) {
 	std::random_shuffle( train_data.begin(), train_data.end());
 	
 	//mlp.loadModel( "model");
-	mlp.train( train_data, 10000, 0.7, 10000, 0.9, 0, 0.01);
+	mlp.train( train_data, 30000, 0.7, 500, 0, 0.9, 0.00);
 
 
 	const auto& first_layer_w2 = mlp.getLayer()[ 0]->getW2();

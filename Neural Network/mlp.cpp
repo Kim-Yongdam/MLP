@@ -109,8 +109,13 @@ output[ i] /= sum;
 void cHiddenLayer::forward_prop( const std::vector<double>& x, std::vector<double>& output) {
 
 	output.resize( w2.size());
-	for(int i =0; i < w2.size(); i++)
-		output[i] = active_func(w2[i], x);
+	for(int i =0; i < w2.size(); i++) {
+		
+		const int dropout_rate_ = dropout_rate;
+		vector<double> w_( w2[i].size());
+		std::transform( w2[i].begin(), w2[i].end() - 1, w_.begin(), [ &dropout_rate_]( const double val) { return val * ( 1 - dropout_rate_);});
+		output[i] = active_func(w_, x);
+	}
 }
 
 
@@ -136,6 +141,7 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 				 const double momentum, const double L1, const double L2) {
 
 	vector< vector< vector<double>>> weight_changes_layers;
+	vector< vector<double>> dropout_layers;
 	for( int nlayer = 0 ; nlayer < layers.size() ; nlayer++) {
 
 		const auto& layer = layers[ nlayer];
@@ -144,6 +150,11 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 		for( int nw = 0 ; nw < layer->getOutputDim() ; nw++)
 			weight_changes.push_back( vector<double>( layer->getInputDim() + 1, 0));
 		weight_changes_layers.push_back( weight_changes);
+
+		vector< double> dropout_layer( layer->getInputDim(), 0);
+		std::fill( dropout_layer.begin(), dropout_layer.begin() + layer->getInputDim() / ( 1 - layer->dropout_rate), 1);
+		std::random_shuffle( dropout_layer.begin(), dropout_layer.end());
+		dropout_layers.push_back( dropout_layer);
 	}
 	
 	for( int iter = 0 ; iter < iteration ; iter++) {
@@ -191,7 +202,12 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 					//output2[i] = layer->active_func( w2[i], output1);
 
 					double derivation;
-					layer->derivate_active_func( w2[i], output1, output2[i], derivation);
+					const vector<double> w_( w2[i].size());
+
+					const auto& dropout_layer = dropout_layers[ nlayer];
+					int idx = 0;
+					std::transform( w2[i].begin(), w2[i].end() - 1, w_.begin(), [ &idx, &dropout_layer]( const double val) { return val * dropout_layer[ idx++];});
+					layer->derivate_active_func( w_, output1, output2[i], derivation);
 					save_f_prime_pk[ nlayer + 1][ i] += derivation;
 				}
 				save_f_prime_pk[nlayer + 1][ w2.size()] += layer->derivate_one_dim( 1);
@@ -276,8 +292,8 @@ void cMLP::train( const std::vector< datum>& data, const int iteration, const do
 			for(int j = 0; j < current_layer_size; j++) {
 				for(int k = 0; k < previous_layer_size - 1; k++) {
 					if(nlayer == 1) delta_p_j[j] += delta_p_k1[k] * w2[k][j] * save_f_prime_pk[ nlayer][ j];
-					L1_term = L1 * LAMBDA * (w2[k][j] / abs(w2[k][j])) / current_layer_size;
-					L2_term = L2 * LAMBDA * w2[k][j] / current_layer_size;
+					//L1_term = L1 * LAMBDA * (w2[k][j] / abs(w2[k][j])) / current_layer_size;
+					//L2_term = L2 * LAMBDA * w2[k][j] / current_layer_size;
 
 					weight_change = learning_rate * (delta_p_k1[k] + L1_term + L2_term) * save_o_pk[nlayer][j];
 					w2[k][j] = w2[k][j] + LEARNING_RATE * weight_change + momentum * weight_changes[ k][ j];
